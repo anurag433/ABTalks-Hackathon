@@ -1,0 +1,80 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: nexusai_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: nexusai
+      POSTGRES_PASSWORD: nexusaipassword
+      POSTGRES_DB: nexusai_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexusai -d nexusai_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexusai_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: nexusai_backend
+    restart: always
+    environment:
+      APP_NAME: "NexusAI Frontier Research"
+      ENVIRONMENT: "production"
+      DATABASE_URL: "postgresql://nexusai:nexusaipassword@postgres:5432/nexusai_db"
+      REDIS_URL: "redis://redis:6379/0"
+      SCHEDULE_INTERVAL_MINUTES: "15"
+      USE_EMBEDDED_MODE: "false"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://0.0.0.0:8000/api/agent/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: nexusai_frontend
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: "http://backend:8000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

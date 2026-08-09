@@ -1,0 +1,49 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment
+.env
+.env.*
+.env.example
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Python testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+
+# Node
+node_modules/
+
+# Next.js
+.next/
+out/
+.turbo/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+
+# Temporary
+*.tmp
+*.temp
