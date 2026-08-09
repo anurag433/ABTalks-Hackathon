@@ -3,7 +3,7 @@ import json
 from contextlib import asynccontextmanager
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, Depends, HTTPException, status, Query, Body
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -395,15 +395,25 @@ def initialize_autonomous_agent(
     persona_dict = None
     if req and req.persona:
         persona_dict = {"name": req.persona.name, "domain": req.persona.domain}
-    res = autonomous_scheduler.initialize_agent(persona=persona_dict, db=db)
-    # Ensure exact required JSON schema at root level while preserving full debug info
-    return {
-        "agentId": res.get("agentId", "agent-nexusai-2026"),
-        "status": "success",
-        "message": res.get("message", "Autonomous AI Creator initialized successfully."),
-        "agent_status": res.get("agent_status", {}),
-        "initial_sweep_stats": res.get("initial_sweep_stats", {}),
-    }
+    try:
+        res = autonomous_scheduler.initialize_agent(persona=persona_dict, db=db)
+        return {
+            "agentId": res.get("agentId", "agent-nexusai-2026"),
+            "status": "success",
+            "message": res.get("message", "Autonomous AI Creator initialized successfully."),
+            "agent_status": res.get("agent_status", {}),
+            "initial_sweep_stats": res.get("initial_sweep_stats", {}),
+        }
+    except Exception as exc:
+        logger.error("Failed to initialize autonomous agent", exc_info=True)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status": "error",
+                "message": "Failed to initialize autonomous agent. See logs for details.",
+                "error": str(exc),
+            },
+        )
 
 
 @app.get("/api/agent/feed", status_code=status.HTTP_200_OK)
